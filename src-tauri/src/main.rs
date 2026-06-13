@@ -34,5 +34,19 @@ fn main() {
     // see Cargo.toml `edition = "2021"`).
     std::env::set_var("GDK_BACKEND", "x11");
 
+    // Disable WebKitGTK's DMA-BUF renderer.
+    //
+    // WebKitGTK 2.42+ allocates DMA-BUF backed compositor buffers via
+    // GBM. On NVIDIA proprietary + X11 (and several other driver /
+    // session combinations), the kernel rejects the GBM allocation
+    // and WebKit logs `Failed to create GBM buffer of size WxH:
+    // Invalid argument` once per window per frame. The widgets still
+    // render via a software fallback, but stderr drowns in that
+    // warning. Switching off the DMA-BUF path makes WebKit use the
+    // legacy Cairo buffer flow instead, which works on every Linux
+    // GPU stack and is plenty fast for the few small canvases this
+    // app draws.
+    std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+
     sys_dashboard_lib::run();
 }
