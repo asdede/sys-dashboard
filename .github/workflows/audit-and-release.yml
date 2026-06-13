@@ -1,0 +1,174 @@
+# Combined nightly audit + tag-triggered release pipeline.
+#
+# Triggers
+# --------
+# * `schedule`         - 03:00 UTC every night. Runs the audit jobs only;
+#                        `release` is gated by `if:` so it stays idle.
+# * `workflow_dispatch` - manual "Run workflow" button in the Actions
+#                        tab. Same scope as schedule.
+# * `push` of `v*` tag - audits + release. The `release` job lists both
+#                        audit jobs in `needs:`, so a moderate-or-worse
+#                        advisory in either dependency tree skips the
+#                        release automatically and surfaces a "workflow
+#                        failed" email instead.
+#
+# Why one workflow file? Sharing the audit jobs between schedule and
+# tag-push means the release is gated against an audit of the *exact*
+# tree we're shipping, not yesterday's nightly.
+
+name: Audit & release
+
+on:
+  schedule:
+    # GitHub jitters scheduled jobs by a few minutes at peak; that's
+    # fine for a nightly check.
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+# `release` requires write access to create the GitHub Release; the
+# audit jobs are pure read. Default the whole workflow to read and
+# escalate inside the release job only.
+permissions:
+  contents: read
+
+jobs:
+  npm-audit:
+    name: npm audit + outdated
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Match `@types/node` in package.json.
+          node-version: 22
+          cache: npm
+
+      # `npm ci` enforces a clean install from the lockfile - we audit
+      # exactly what would land on a fresh checkout.
+      - name: Install
+        run: npm ci
+
+      - name: npm audit
+        run: npm audit --audit-level=moderate
+
+      - name: npm outdated (report)
+        # `if: always()` so we still get the report when audit failed.
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## npm outdated'
+            echo ''
+            echo '```'
+            # `npm outdated` exits non-zero whenever any dep is behind,
+            # which on an active project is most days. Swallow the exit
+            # code so this step itself stays green.
+            npm outdated || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  cargo-audit:
+    name: cargo audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # cargo-audit reads `Cargo.lock`, so cache the registry/index/
+      # build artefacts to keep the install + run under a minute.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install cargo-audit
+        run: cargo install --locked cargo-audit
+
+      - name: Run cargo audit
+        working-directory: src-tauri
+        # `cargo audit` exits non-zero on any unpatched advisory in
+        # the dependency tree, which fails the job and (via the
+        # `needs:` link below) skips the release.
+        run: cargo audit
+
+  release:
+    name: Build & release
+    # Only fire on tag push. Schedule + workflow_dispatch run audits
+    # alone.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [npm-audit, cargo-audit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      # Required to create a GitHub Release and upload the bundle.
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # Tauri's WebKitGTK + AppImage tooling. webkit2gtk-4.1 is the
+      # API Tauri 2 builds against (4.0 was Tauri 1).
+      - name: Install Linux build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            patchelf
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install npm deps
+        run: npm ci
+
+      # tauri-action wraps `tauri build`, picks the right bundle
+      # targets, and uploads the artefacts to a draft release named
+      # after the tag.
+      #
+      # `args: --bundles rpm,appimage` matches the README's two
+      # install routes; .deb is omitted since neither route uses it.
+      #
+      # `APPIMAGE_EXTRACT_AND_RUN=1` dodges the libfuse2-vs-fuse3
+      # incompatibility that breaks `linuxdeploy` on some distros
+      # (defensive on Ubuntu runners; mandatory if we ever switch).
+      - name: Build & publish release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'sys-dashboard ${{ github.ref_name }}'
+          releaseBody: |
+            Auto-built from tag `${{ github.ref_name }}`.
+
+            ## Install on Fedora 43
+
+            * **RPM**: `sudo dnf install ./sys-dashboard-*.x86_64.rpm`
+            * **AppImage**: `chmod +x sys-dashboard_*.AppImage && ./sys-dashboard_*.AppImage`
+
+            See the [README](../blob/main/README.md) for autostart setup
+            and the `place` config option.
+          # Draft so you can review the upload list before notifying
+          # subscribers. Flip to `false` if you'd rather it publish
+          # immediately.
+          releaseDraft: true
+          prerelease: false
+          args: '--bundles rpm,appimage'
