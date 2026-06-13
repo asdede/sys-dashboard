@@ -2,6 +2,13 @@
 
 ## System monitor + weather widged
 
+Movable and rezisable.
+
+Includes:
+- GPU usage and vram
+- Ram usage
+- CPU usage
+
 ![img](./img/all.png)
 
 
