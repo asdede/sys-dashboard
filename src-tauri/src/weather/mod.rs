@@ -39,9 +39,30 @@ pub struct DayForecast {
 
 #[derive(Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct CurrentForecast {
+    pub label: String,
+    pub condition: String,
+    pub temp_c: f32,
+    pub weekday:  String,
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct FutureForecast {
+    pub label: String,
+    pub condition: String,
+    pub temp_c: f32,
+    pub plus_hours: u32,
+    pub weekday: String,
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct Forecast {
     pub location: String,
+    pub current: CurrentForecast,
     pub days: Vec<DayForecast>,
+    pub future: Vec<FutureForecast>,
 }
 
 /// The seam every alternative weather provider plugs into.

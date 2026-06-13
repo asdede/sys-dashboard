@@ -253,28 +253,122 @@ body.widget-gpu .label {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
 }
 
-/* Forecast window is a row of three day-cards filling the width. */
+/* Forecast window is a vertical stack: header, current, hourly, daily. */
 body.widget-forecast .content {
-  padding: 2px 8px 8px;
+  padding: 6px 10px 8px;
+  align-items: stretch;
+  justify-content: flex-start;
 }
 body.widget-forecast .forecast {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+}
+
+/* Header: location + date. Sits over the desktop with no card background,
+   so a tiny shadow keeps it legible against bright wallpapers. */
+.forecast-header {
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+.forecast-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--fg);
+}
+.forecast-date {
+  margin-top: 1px;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* Current weather: large icon + large temperature, side-by-side, in the
+   only big card of the widget. */
+.current-weather {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+}
+.current-weather .current-icon svg {
+  width: 56px;
+  height: 56px;
+  display: block;
+  color: var(--accent);
+}
+.current-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.current-temp {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--fg);
+}
+.current-condition {
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
+/* Hourly strip: no card backgrounds, just label + small icon + temp.
+   Sits flat over the desktop, so the same shadow trick as the header. */
+.future-weather {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 4px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+.future-weather .hour {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.future-weather .hour svg {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+.future-weather .hour-label {
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.future-weather .hour-temp {
+  font-size: 10px;
+  color: var(--fg);
+}
+
+/* Daily strip: row of boxed cards, slightly larger than the hourly entries. */
+.days-weather {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
-  width: 100%;
 }
 
-/* Day cards - the only opaque elements in the forecast window so the
-   text remains readable on any background. */
+/* Day cards - opaque so the high/low text stays readable on any wallpaper. */
 .day {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 4px 0;
-  background: rgba(20, 22, 28, 0.55);
   border-radius: 8px;
   color: var(--fg);
   backdrop-filter: blur(8px);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.75);
 }
 .day .day-label {
   font-size: 10px;

@@ -1,8 +1,15 @@
 // Forecast renderer.
 //
-// Given a Forecast from the Rust side, draws three day-cards into a
-// container element. Icons are inline SVG kept in a record keyed by
-// the `condition` string the Rust side emits.
+// Given a Forecast from the Rust side, draws four stacked sections into
+// a container element:
+//
+//   1. Header   - location + today's date
+//   2. Current  - large icon + current temperature
+//   3. Hourly   - flat row of +2h / +4h / +6h, no card backgrounds
+//   4. Daily    - row of boxed cards (today, tomorrow, ...)
+//
+// Icons are inline SVG kept in a record keyed by the `condition` string
+// the Rust side emits.
 //
 // Why inline SVG instead of <img src="...">?
 //   - One bundle, no extra HTTP requests in dev or runtime.
@@ -59,12 +66,47 @@ const FALLBACK_ICON = `
     <text x="14" y="18" text-anchor="middle" font-size="11" fill="currentColor" stroke="none">?</text>
   </svg>`;
 
-/** Replace `host`'s contents with a card per day in the forecast. */
+const WEEKDAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+] as const;
+
+const MONTH_NAMES = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+] as const;
+
+/** Replace `host`'s contents with the four-section forecast layout. */
 export function renderForecast(host: HTMLElement, forecast: Forecast): void {
-  // We rebuild innerHTML on every refresh. With three cards every 15+
-  // minutes that's effectively free. lit-html / morphdom would only be
-  // worth the dependency if cards updated many times per second.
-  host.innerHTML = forecast.days
+  // We rebuild innerHTML on every refresh. With a handful of nodes every
+  // 15+ minutes that's effectively free. lit-html / morphdom would only
+  // be worth the dependency if the strip updated many times per second.
+
+  const now = new Date();
+  const dateText = `${WEEKDAY_NAMES[now.getDay()]} \u00B7 ${now.getDate()} ${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`;
+
+  const currentIcon = ICONS[forecast.current.condition] ?? FALLBACK_ICON;
+  const currentTemp = Math.round(forecast.current.tempC);
+
+  const hourly = forecast.future
+    .map((f) => {
+      const icon = ICONS[f.condition] ?? FALLBACK_ICON;
+      const t = Math.round(f.tempC);
+      return `
+        <div class="hour">
+          <span class="hour-label">+${f.plusHours}h</span>
+          ${icon}
+          <span class="hour-temp">${t}\u00B0</span>
+        </div>`;
+    })
+    .join("");
+
+  const days = forecast.days
     .map((day) => {
       const icon = ICONS[day.condition] ?? FALLBACK_ICON;
       const hi = Math.round(day.tempHighC);
@@ -72,13 +114,28 @@ export function renderForecast(host: HTMLElement, forecast: Forecast): void {
       // \u00B0 is the degree sign without smuggling a non-ASCII char
       // through the source file.
       return `
-        <div class="day" title="${escapeHtml(forecast.location)}">
+        <div class="day">
           <span class="day-label">${escapeHtml(day.label)}</span>
           ${icon}
           <span class="temps"><span class="hi">${hi}\u00B0</span> / <span class="lo">${lo}\u00B0</span></span>
         </div>`;
     })
     .join("");
+
+  host.innerHTML = `
+    <header class="forecast-header" title="${escapeHtml(forecast.location)}">
+      <h2 class="forecast-title">${escapeHtml(forecast.location.toUpperCase())}</h2>
+      <div class="forecast-date">${escapeHtml(dateText)}</div>
+    </header>
+    <div class="current-weather">
+      <div class="current-icon">${currentIcon}</div>
+      <div class="current-meta">
+        <div class="current-temp">${currentTemp}\u00B0</div>
+        <div class="current-condition">${escapeHtml(forecast.current.label)} \u00B7 ${escapeHtml(forecast.current.condition)}</div>
+      </div>
+    </div>
+    <div class="future-weather">${hourly}</div>
+    <div class="days-weather">${days}</div>`;
 }
 
 // Minimal HTML escaper - good enough for the labels we control on the

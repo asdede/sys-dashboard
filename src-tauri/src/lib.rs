@@ -53,7 +53,7 @@ const WIDGETS: &[WidgetSpec] = &[
     WidgetSpec { label: "cpu",      width: 120.0, height: 140.0, default_x: 60.0,  default_y: 60.0  },
     WidgetSpec { label: "ram",      width: 120.0, height: 140.0, default_x: 200.0, default_y: 60.0  },
     WidgetSpec { label: "gpu",      width: 120.0, height: 140.0, default_x: 340.0, default_y: 60.0  },
-    WidgetSpec { label: "forecast", width: 380.0, height: 110.0, default_x: 60.0,  default_y: 220.0 },
+    WidgetSpec { label: "forecast", width: 260.0, height: 260.0, default_x: 60.0,  default_y: 220.0 },
 ];
 
 /// Long-lived data the Tauri app owns. See module docstring for the

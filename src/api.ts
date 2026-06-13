@@ -35,10 +35,27 @@ export interface DayForecast {
   tempLowC: number;
 }
 
+export interface CurrentForecast {
+  label: string;
+  condition: string;
+  tempC: number;
+  weekday: string;
+}
+
+export interface FutureForecast {
+  label: string;
+  condition: string;
+  tempC: number;
+  plusHours: number;
+  weekday: string;
+}
+
 /** Mirrors `Forecast` in `src-tauri/src/weather/mod.rs`. */
 export interface Forecast {
   location: string;
+  current: CurrentForecast;
   days: DayForecast[];
+  future: FutureForecast[];
 }
 
 export function getSystemStats(): Promise<SystemStats> {
