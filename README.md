@@ -4,6 +4,9 @@
 
 Movable and rezisable.
 
+On first launch spawns all with default values. Changes to size and position are saved after first edit.
+This data is saved to `~/.config/dev.sysdashboard.app/widgets.json`
+
 Includes:
 - GPU usage and vram
 - Ram usage
@@ -12,6 +15,11 @@ Includes:
 
 ![img](./img/all.png)
 
+## Configuration
+
+### Ilmatieteenlaitos forecast api (Scandinavian)
+- Default api (And currently only one)
+- Change the city in widgets.json config
 
 ## Prerequisites (Fedora 43)
 
@@ -51,36 +59,44 @@ npm run tauri build    # produces .rpm + AppImage in
                        # src-tauri/target/release/bundle/
 ```
 
+## Configuration
+
+Per-widget positions, lock state, and the forecast city all live in
+one JSON file under the OS-standard config dir (Linux:
+`~/.config/dev.sysdashboard.app/widgets.json`):
+
+```json
+{
+  "place": "Helsinki",
+  "widgets": {
+    "cpu":      { "x": 60,  "y": 60,  "width": 120, "height": 140, "locked": false },
+    "forecast": { "x": 60,  "y": 220, "width": 260, "height": 260, "locked": false }
+  }
+}
+```
+
+`place` is the town/city name passed straight through to the FMI Open
+Data WFS as `place=`. Defaults to `"Helsinki"` if missing.
+Restart the app after editing.
+
 ## How to extend
 
+### 1. Swap weather providers
 
-### 1. Plug in a real weather provider
-
-`src-tauri/src/weather/demo.rs` is a hardcoded `WeatherProvider`. To
-replace it with your country's API:
-
-1. Add an HTTP client to `src-tauri/Cargo.toml`:
-
-   ```toml
-   reqwest = { version = "0.12", features = ["json", "blocking", "rustls-tls"] }
-   ```
-
-2. Create a sibling file, e.g. `src-tauri/src/weather/your_country.rs`,
-   with a struct that implements `WeatherProvider`. Inside `forecast()`,
-   call your endpoint with `reqwest::blocking::get(...)`, parse the
-   JSON with serde, and map fields onto `DayForecast`.
-
-3. In `src-tauri/src/lib.rs`, swap
-
-   ```rust
-   weather: Box::new(DemoProvider::default()),
-   ```
-
-   for your new provider.
+The forecast widget is wired to
+[`FmiProvider`](src-tauri/src/weather/fmi.rs), which hits the Finnish
+Meteorological Institute Open Data WFS using the
+`fmi::forecast::edited::weather::scandinavia::point::simple` stored
+query. To plug in a different country's API, write a sibling module
+that implements [`WeatherProvider`](src-tauri/src/weather/mod.rs) and
+swap the `Box::new(FmiProvider::new(...))` line in `src-tauri/src/lib.rs`.
 
 The trait keeps `forecast()` synchronous on purpose: Tauri commands run
 on a thread pool, so a blocking HTTP call inside is fine and skips a
 lot of async-runtime ceremony.
+
+The original demo provider lives at `src-tauri/src/weather/demo.rs`
+and is kept around as an offline fallback.
 
 To launch the widget at login, drop a desktop entry into
 `~/.config/autostart/`:

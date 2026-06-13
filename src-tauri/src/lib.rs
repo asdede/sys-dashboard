@@ -35,7 +35,7 @@ use tauri::{
 use config::ConfigStore;
 use monitors::cpu_ram::SystemMonitor;
 use monitors::gpu::GpuMonitor;
-use weather::demo::DemoProvider;
+use weather::fmi::FmiProvider;
 use weather::{Forecast, WeatherProvider};
 
 /// One entry per widget window we want to spawn. `default_x`/`default_y`
@@ -120,12 +120,6 @@ fn set_widget_locked(label: String, locked: bool, store: tauri::State<Arc<Config
 /// Application entry point - called from `main.rs`.
 pub fn run() {
     tauri::Builder::default()
-        .manage(AppState {
-            system: Mutex::new(SystemMonitor::new()),
-            gpu: Mutex::new(GpuMonitor::new()),
-            // TODO(you): swap DemoProvider for your real implementation.
-            weather: Box::new(DemoProvider::default()),
-        })
         .setup(|app| {
             // Resolve the config file location. `app_config_dir()` returns
             // `~/.config/<identifier>/` on Linux, with platform-equivalent
@@ -140,6 +134,16 @@ pub fn run() {
             let store = Arc::new(ConfigStore::load(cfg_path));
             // Make the store retrievable by commands as State<Arc<ConfigStore>>.
             app.manage(store.clone());
+
+            // AppState lives here (not on the outer builder) because the
+            // weather provider needs the loaded ConfigStore to look up
+            // the user's `place` setting. Tauri's `manage()` can be
+            // called from inside `setup` just as well as on the builder.
+            app.manage(AppState {
+                system: Mutex::new(SystemMonitor::new()),
+                gpu: Mutex::new(GpuMonitor::new()),
+                weather: Box::new(FmiProvider::new(store.clone())),
+            });
 
             for spec in WIDGETS {
                 let cfg = store.get(spec.label);

@@ -38,12 +38,21 @@ pub struct WidgetConfig {
     pub locked: bool,
 }
 
-/// Top-level file shape: `{ "widgets": { "cpu": {...}, ... } }`.
+/// Top-level file shape:
+/// `{ "place": "Best City Ever", "widgets": { "cpu": {...}, ... } }`.
+///
+/// `place` is the town/city name passed to the FMI Open Data WFS
+/// (`place=` query arg) by [`crate::weather::fmi::FmiProvider`]. Missing
+/// or empty values fall back to `"Helsinki"` - see [`ConfigStore::place`].
 #[derive(Default, Clone, Serialize, Deserialize)]
 pub struct Config {
     #[serde(default)]
+    pub place: Option<String>,
+    #[serde(default)]
     pub widgets: HashMap<String, WidgetConfig>,
 }
+
+const DEFAULT_PLACE: &str = "Helsinki";
 
 /// Loaded-and-mutable view of `widgets.json`.
 ///
@@ -71,6 +80,22 @@ impl ConfigStore {
             path,
             inner: Mutex::new(inner),
         }
+    }
+
+    /// Currently-configured town/city name passed to the weather
+    /// provider. Falls back to `"Helsinki"` on a missing, blank, or
+    /// whitespace-only value so the forecast widget always has
+    /// *something* to query.
+    pub fn place(&self) -> String {
+        self.inner
+            .lock()
+            .unwrap()
+            .place
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_owned)
+            .unwrap_or_else(|| DEFAULT_PLACE.to_owned())
     }
 
     /// Snapshot of one widget's config. Returns defaults for unknown

@@ -29,3 +29,21 @@ sysinfo = "0.32"
 # machines without the proprietary driver - we just get an Err on init
 # and degrade gracefully.
 nvml-wrapper = "0.10"
+
+# Weather provider deps.
+#
+# reqwest's `blocking` feature gives us a synchronous Client - perfect
+# for `WeatherProvider::forecast()` which Tauri already runs on a
+# worker thread. `rustls-tls` keeps the binary self-contained instead
+# of dlopening libssl at runtime.
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
+
+# quick-xml: pull-parser for the WFS GML response. Each row of the
+# `simple` feature shape is a tiny `<wfs:member>` element, so we
+# stream events rather than materialising a DOM.
+quick-xml = "0.36"
+
+# chrono + chrono-tz: parse RFC-3339 timestamps from FMI and convert
+# them to Europe/Helsinki for "today / tomorrow / day after" bucketing.
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+chrono-tz = "0.10"

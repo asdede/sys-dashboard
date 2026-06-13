@@ -7,10 +7,14 @@
 //!
 //! Concrete providers live in sibling files:
 //!
-//!   * [`demo`] - hardcoded data for the scaffold.
-//!   * `your_country` - **you'll add this**.
+//!   * [`demo`] - hardcoded data, kept around for offline development
+//!     and as a fallback you can swap back in when the network is
+//!     unreachable.
+//!   * [`fmi`] - the real provider used by `lib.rs`. Hits the Finnish
+//!     Meteorological Institute Open Data WFS for any Finnish town.
 
 pub mod demo;
+pub mod fmi;
 
 use serde::Serialize;
 
