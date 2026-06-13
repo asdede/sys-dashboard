@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>sys-dashboard</title>
+  </head>
+  <body>
+    <!--
+      This page is loaded by every widget window. Which widget is
+      actually rendered is decided by the `?widget=` query string the
+      Rust setup() hands the WebviewWindow:
+
+          index.html?widget=cpu        -> CPU gauge
+          index.html?widget=ram        -> RAM gauge
+          index.html?widget=gpu        -> GPU / VRAM gauge
+          index.html?widget=forecast   -> 3-day forecast strip
+
+      `main.ts` reads the query parameter, mounts a frame (drag handle +
+      hover-revealed lock toggle + content area) and then mounts only the
+      one widget this window is responsible for.
+    -->
+    <main id="app"></main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,296 @@
+/* ---------------------------------------------------------------------
+   Theme variables. Change one number here to re-skin every widget.
+   --------------------------------------------------------------------- */
+:root {
+  --fg: #f1f3f5;
+  --muted: #97a3b3;
+  --accent: #5fb3ff;
+  /* Faint frame outline on hover - just enough to show where the
+     transparent box actually is. */
+  --outline-hover: rgba(255, 255, 255, 0.18);
+  --outline-locked: rgba(255, 255, 255, 0.06);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--fg);
+}
+
+/* The default body margin would show as an 8-px halo around our
+   transparent windows. Reset and lock everything to viewport size. */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  /* Disable text selection so dragging the widget never accidentally
+     starts a selection. */
+  user-select: none;
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* ---------------------------------------------------------------------
+   Frame - the rounded "card" that fills each widget window. Fully
+   transparent by design; the gauge canvas / day cards are the only
+   visible content. A subtle outline appears on hover so the user can
+   tell where the (otherwise invisible) drag region is.
+   --------------------------------------------------------------------- */
+.frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border-radius: 12px;
+  outline: 1px solid transparent;
+  transition: outline-color 0.12s ease;
+}
+.frame:hover {
+  outline-color: var(--outline-hover);
+}
+body.locked .frame:hover {
+  outline-color: var(--outline-locked);
+}
+
+/* Drag overlay. Covers the whole frame and carries the
+   `data-tauri-drag-region` attribute so mouse-down anywhere starts a
+   window drag. Sits between `.content` (below) and the lock toggle +
+   resize grip (above), so the latter two are still clickable.
+
+   When locked, JS strips the attribute; the overlay still exists, but
+   mouse-down just does nothing - that's fine for a passive widget. */
+.drag-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  cursor: grab;
+}
+.drag-overlay:active {
+  cursor: grabbing;
+}
+body.locked .drag-overlay {
+  cursor: default;
+
+}
+
+.resize-grip {
+  display: none;
+  z-index: 0;
+}
+
+/* Content slot. Sits under the drag overlay; widget code (gauges or
+   forecast) writes into this. Per-widget rules below tune the layout. */
+.content {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------------------------------------------------------------------
+   Lock toggle. Top-right corner. Must NOT carry
+   `data-tauri-drag-region` or its click would start a drag instead
+   of toggling.
+
+   Visibility behaviour:
+     * Unlocked - always visible at a calm idle opacity, so the
+       affordance is discoverable without the user having to hover.
+     * Locked - hidden by default; fades in when the user hovers
+       anywhere over the widget window, so the icon stays out of
+       the way but is still findable when the user wants to unlock.
+     * Direct hover (or keyboard focus) on the button always bumps
+       it to full opacity in either state.
+   --------------------------------------------------------------------- */
+.lock-toggle {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 18px;
+  height: 18px;
+  padding: 2px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--muted);
+  opacity: 0.55;
+  cursor: pointer;
+  transition: opacity 0.12s ease, color 0.12s ease, background 0.12s ease;
+  z-index: 3;
+}
+.lock-toggle svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
+
+/* Locked state. Hide by default, reveal on whole-widget hover.
+   `body:hover` matches whenever the cursor is anywhere over the
+   window because the body fills the viewport. */
+body.locked .lock-toggle {
+  opacity: 0;
+}
+body.locked:hover .lock-toggle {
+  opacity: 0.55;
+}
+
+/* Direct hover / keyboard focus: full opacity in either state.
+   The locked-state variant is spelled out explicitly so it can
+   beat `body.locked:hover .lock-toggle` on specificity (both
+   selectors weigh 0,3,1; the later one wins, so this block must
+   stay below the locked-reveal block above). */
+.lock-toggle:hover,
+.lock-toggle:focus-visible,
+body.locked .lock-toggle:hover,
+body.locked .lock-toggle:focus-visible {
+  opacity: 1;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+}
+
+/* ---------------------------------------------------------------------
+   Resize grip. Bottom-right corner. Hover-revealed like the lock; the
+   mouse-down handler in main.ts calls Tauri's startResizeDragging API.
+   Hidden when the widget is locked.
+   --------------------------------------------------------------------- */
+.resize-grip {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  color: var(--muted);
+  opacity: 0;
+  cursor: nwse-resize;
+  transition: opacity 0.12s ease, color 0.12s ease;
+  z-index: 3;
+}
+.resize-grip svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
+.frame:hover .resize-grip {
+  opacity: 0.6;
+}
+.resize-grip:hover {
+  opacity: 1;
+  color: var(--fg);
+}
+body.locked .resize-grip {
+  display: none;
+}
+
+/* ---------------------------------------------------------------------
+   Per-widget content sizing.
+   --------------------------------------------------------------------- */
+
+/* Gauges fill their window: a centred SVG plus a tiny label below.
+   Grid (not flex+aspect-ratio) intentionally - aspect-ratio inside a
+   flex column with `flex: 1` would fight the parent's height. */
+body.widget-cpu .content,
+body.widget-ram .content,
+body.widget-gpu .content {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 2px;
+  padding: 4px 6px 6px;
+  place-items: center;
+  justify-items: stretch;
+}
+body.widget-cpu .gauge,
+body.widget-ram .gauge,
+body.widget-gpu .gauge {
+  /* Fill the grid cell exactly. The inner SVG uses a 100x100 viewBox
+     with `preserveAspectRatio: xMidYMid meet` (the default), so a
+     non-square cell renders the ring centred without distortion. */
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 100px;
+  min-height: 100px;
+}
+/* The SVG the Gauge class injects fills its container exactly. */
+.gauge-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible; /* round line-caps may poke past the viewBox */
+}
+/* Centre value text - sized in viewBox units (the viewBox is 100x100,
+   so 22 means "22% of the gauge height"). */
+.gauge-value {
+  fill: var(--fg);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-weight: 600;
+  font-size: 22px;
+}
+.gauge-subtitle {
+  fill: var(--muted);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-weight: 500;
+  font-size: 9px;
+}
+body.widget-cpu .label,
+body.widget-ram .label,
+body.widget-gpu .label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  /* Tiny shadow so the label stays legible against bright wallpapers. */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+/* Forecast window is a row of three day-cards filling the width. */
+body.widget-forecast .content {
+  padding: 2px 8px 8px;
+}
+body.widget-forecast .forecast {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  width: 100%;
+}
+
+/* Day cards - the only opaque elements in the forecast window so the
+   text remains readable on any background. */
+.day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 0;
+  background: rgba(20, 22, 28, 0.55);
+  border-radius: 8px;
+  color: var(--fg);
+  backdrop-filter: blur(8px);
+}
+.day .day-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.day svg {
+  width: 28px;
+  height: 28px;
+  margin: 2px 0;
+  color: var(--accent);
+}
+.day .temps {
+  font-size: 11px;
+}
+.day .temps .lo {
+  color: var(--muted);
+}

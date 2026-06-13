@@ -1,0 +1,31 @@
+[package]
+name = "sys-dashboard"
+version = "0.1.0"
+description = "Minimal system + weather widget for Fedora 43"
+edition = "2021"
+rust-version = "1.77"
+
+# The library target is what mobile builds and integration tests link
+# against. main.rs is a tiny shim that calls into the library; see the
+# explanatory comment at the top of src/main.rs.
+[lib]
+name = "sys_dashboard_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# sysinfo: cross-platform CPU + memory reader. We pin to a 0.32.x range
+# because the API churned around 0.31 (`RefreshKind::new()` -> `nothing()`).
+sysinfo = "0.32"
+
+# nvml-wrapper: thin Rust binding over NVIDIA's NVML C library. It
+# dlopens libnvidia-ml.so.1 at runtime, so the binary still LINKS on
+# machines without the proprietary driver - we just get an Err on init
+# and degrade gracefully.
+nvml-wrapper = "0.10"

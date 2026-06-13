@@ -1,0 +1,38 @@
+[Desktop Entry]
+# XDG autostart entry for the system-monitor widgets. Drop into
+# ~/.config/autostart/ to launch on every login. See packaging/README.md
+# (next to this file) for install steps.
+
+Type=Application
+Name=Sys Dashboard
+Comment=Floating CPU / RAM / GPU / forecast widgets on the desktop
+Categories=System;Monitor;Utility;
+
+# Replace __INSTALL_PATH__ with the absolute path to the installed
+# binary. Recommended location: ~/.local/bin/sys-dashboard.
+# Two env vars are exported inline:
+#   * GDK_BACKEND=x11               - widget positioning needs XWayland
+#                                     (Wayland's xdg_toplevel forbids
+#                                     reading or setting window position;
+#                                     see src-tauri/src/main.rs for the
+#                                     full explanation).
+#   * WEBKIT_DISABLE_DMABUF_RENDERER=1
+#                                   - works around a WebKitGTK rendering
+#                                     bug on some GPU drivers; harmless
+#                                     elsewhere.
+Exec=env GDK_BACKEND=x11 WEBKIT_DISABLE_DMABUF_RENDERER=1 __INSTALL_PATH__
+TryExec=__INSTALL_PATH__
+
+# UI-visibility flags. The widgets themselves draw their own UI, so the
+# launcher / overview should NOT advertise this app:
+#   * NoDisplay=true     - don't show in the application grid / dash
+#   * Terminal=false     - GUI app, no terminal needed
+#   * StartupNotify=false - no startup-notification bouncing cursor
+Hidden=false
+NoDisplay=true
+Terminal=false
+StartupNotify=false
+
+# GNOME-specific: explicitly opt in to autostart even when the user has
+# the global GNOME autostart toggle off for "unknown" apps.
+X-GNOME-Autostart-enabled=true
