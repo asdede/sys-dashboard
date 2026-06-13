@@ -25,11 +25,11 @@ use serde::Serialize;
 ///   * It crosses the IPC boundary as plain JSON, where the TS side
 ///     already keys icons by string. An enum would just add a
 ///     translation layer.
-///   * You can extend the vocabulary (e.g. "fog", "thunderstorm",
-///     "mist") without changing this Rust signature - just add a key in
-///     `src/forecast.ts`'s ICONS map.
+///   * You can extend the vocabulary without changing this Rust
+///     signature - just add a key in `src/forecast.ts`'s ICONS map.
 ///
-/// Recommended values: `"clear" | "cloudy" | "rain" | "snow"`.
+/// Recommended values: `"clear" | "partly-cloudy" | "cloudy" | "fog"
+///                    | "rain" | "thunder" | "sleet" | "snow"`.
 #[derive(Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct DayForecast {

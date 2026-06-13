@@ -406,20 +406,30 @@ fn weekday_label_local(t: &DateTime<Utc>) -> String {
     .to_owned()
 }
 
-/// Map an FMI `WeatherSymbol3` numeric code into the four condition
-/// keys the frontend understands (`clear` / `cloudy` / `rain` / `snow`).
+/// Map an FMI `WeatherSymbol3` numeric code into one of the eight
+/// condition keys the frontend understands:
+///
+///   `clear` | `partly-cloudy` | `cloudy` | `fog`
+///   `rain`  | `thunder`       | `sleet`  | `snow`
 ///
 /// Code groups (FMI):
 ///   * `1`              clear
-///   * `2`, `3`         partly cloudy / cloudy
-///   * `21..=23`        weak / moderate / strong showers
+///   * `2`              partly cloudy
+///   * `3`              cloudy / overcast
+///   * `21..=23`        weak / moderate / strong rain showers
 ///   * `31..=33`        weak / moderate / strong rain
 ///   * `41..=43`        weak / moderate / strong snow showers
 ///   * `51..=53`        weak / moderate / strong snowfall
-///   * `61..=63`        thunder
+///   * `61..=63`        weak / moderate / strong thunder
 ///   * `71..=73`        weak / moderate / strong sleet showers
 ///   * `81..=83`        weak / moderate / strong sleet
 ///   * `91`, `92`       mist, fog
+///
+/// Sleet (a snow / rain mix) keeps its own bucket because the visual
+/// signal is meaningfully different from plain rain. Thunder likewise
+/// gets its own icon since it's the dramatic one users actually want
+/// to notice. Mist and fog both collapse into `fog` because at the
+/// widget's icon size the difference isn't legible.
 ///
 /// Falls back to `"cloudy"` for missing or unknown codes - showing a
 /// neutral icon is preferable to crashing or to silently substituting
@@ -431,10 +441,13 @@ fn symbol_to_condition(symbol: Option<f32>) -> String {
     let code = value.round() as i32;
     let key = match code {
         1 => "clear",
-        2 | 3 => "cloudy",
-        21..=23 | 31..=33 | 61..=63 | 71..=73 | 81..=83 => "rain",
+        2 => "partly-cloudy",
+        3 => "cloudy",
+        21..=23 | 31..=33 => "rain",
         41..=43 | 51..=53 => "snow",
-        91 | 92 => "cloudy",
+        61..=63 => "thunder",
+        71..=73 | 81..=83 => "sleet",
+        91 | 92 => "fog",
         _ => "cloudy",
     };
     key.to_owned()
@@ -458,10 +471,20 @@ mod tests {
     #[test]
     fn symbol_groups() {
         assert_eq!(symbol_to_condition(Some(1.0)), "clear");
+        assert_eq!(symbol_to_condition(Some(2.0)), "partly-cloudy");
         assert_eq!(symbol_to_condition(Some(3.0)), "cloudy");
+        assert_eq!(symbol_to_condition(Some(22.0)), "rain");
         assert_eq!(symbol_to_condition(Some(32.0)), "rain");
+        assert_eq!(symbol_to_condition(Some(42.0)), "snow");
         assert_eq!(symbol_to_condition(Some(52.0)), "snow");
-        assert_eq!(symbol_to_condition(Some(92.0)), "cloudy");
+        assert_eq!(symbol_to_condition(Some(61.0)), "thunder");
+        assert_eq!(symbol_to_condition(Some(63.0)), "thunder");
+        assert_eq!(symbol_to_condition(Some(72.0)), "sleet");
+        assert_eq!(symbol_to_condition(Some(82.0)), "sleet");
+        assert_eq!(symbol_to_condition(Some(91.0)), "fog");
+        assert_eq!(symbol_to_condition(Some(92.0)), "fog");
+
+        // Defensive fallbacks.
         assert_eq!(symbol_to_condition(None), "cloudy");
         assert_eq!(symbol_to_condition(Some(999.0)), "cloudy");
     }

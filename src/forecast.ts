@@ -9,16 +9,19 @@
 //   4. Daily    - row of boxed cards (today, tomorrow, ...)
 //
 // Icons are inline SVG kept in a record keyed by the `condition` string
-// the Rust side emits.
+// the Rust side emits. The full vocabulary is:
+//
+//   clear | partly-cloudy | cloudy | fog
+//   rain  | thunder       | sleet  | snow
+//
+// Anything outside that list falls back to FALLBACK_ICON, so adding a
+// new key here is the only step needed when the Rust side starts
+// emitting a new condition string.
 //
 // Why inline SVG instead of <img src="...">?
 //   - One bundle, no extra HTTP requests in dev or runtime.
 //   - `currentColor` lets the icon inherit its colour from CSS, so we
 //     can re-theme everything by changing one variable.
-//
-// TODO(you): expand ICONS once your real provider produces more
-// conditions (fog, thunderstorm, mist, ...) - or replace this map with
-// a loader for a richer icon set such as Meteocons.
 
 import type { Forecast } from "./api";
 
@@ -38,9 +41,33 @@ const ICONS: Record<string, string> = {
       <line x1="19.8" y1="8.2"  x2="21.8" y2="6.2"/>
     </svg>`,
 
+  // Small sun upper-left + a cloud overlapping its lower-right quadrant.
+  // Sun is rendered as filled circle + short rays so it reads well at
+  // 18x18 (the hourly strip). Cloud is filled to match `cloudy`.
+  "partly-cloudy": `
+    <svg viewBox="0 0 28 28" stroke="currentColor" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="10" cy="10" r="3" fill="currentColor" stroke="none"/>
+      <line x1="10"  y1="3"   x2="10"   y2="5"/>
+      <line x1="3"   y1="10"  x2="5"    y2="10"/>
+      <line x1="5.2" y1="5.2" x2="6.4"  y2="6.4"/>
+      <line x1="14.8" y1="5.2" x2="13.6" y2="6.4"/>
+      <line x1="5.2"  y1="14.8" x2="6.4"  y2="13.6"/>
+      <path d="M11 22 H22 a3.5 3.5 0 0 0 0.4 -6.96 A5 5 0 0 0 11.6 14.5 A4 4 0 0 0 11 22 z" fill="currentColor"/>
+    </svg>`,
+
   cloudy: `
     <svg viewBox="0 0 28 28" stroke="currentColor" fill="currentColor" stroke-width="1.2" stroke-linejoin="round">
       <path d="M9 19 H21 a4 4 0 0 0 0.4 -7.96 A6 6 0 0 0 9.6 10.5 A4.5 4.5 0 0 0 9 19 z"/>
+    </svg>`,
+
+  // Cloud + two horizontal "fog bars" beneath. Mist (FMI 91) and fog
+  // (FMI 92) both land here; on a 28x28 widget the visual difference
+  // isn't worth two icons.
+  fog: `
+    <svg viewBox="0 0 28 28" stroke="currentColor" fill="none" stroke-width="1.4" stroke-linecap="round">
+      <path d="M9 14 H21 a4 4 0 0 0 0.4 -7.96 A6 6 0 0 0 9.6 5.5 A4.5 4.5 0 0 0 9 14 z" fill="currentColor"/>
+      <line x1="6"  y1="19" x2="22" y2="19"/>
+      <line x1="9"  y1="23" x2="20" y2="23"/>
     </svg>`,
 
   rain: `
@@ -48,6 +75,25 @@ const ICONS: Record<string, string> = {
       <path d="M9 14 H21 a4 4 0 0 0 0.4 -7.96 A6 6 0 0 0 9.6 5.5 A4.5 4.5 0 0 0 9 14 z" fill="currentColor"/>
       <line x1="10" y1="18" x2="9"  y2="22"/>
       <line x1="15" y1="18" x2="14" y2="22"/>
+      <line x1="20" y1="18" x2="19" y2="22"/>
+    </svg>`,
+
+  // Cloud + zigzag lightning bolt. The bolt is a closed filled path so
+  // it stays visible at 18x18.
+  thunder: `
+    <svg viewBox="0 0 28 28" stroke="currentColor" fill="none" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 14 H21 a4 4 0 0 0 0.4 -7.96 A6 6 0 0 0 9.6 5.5 A4.5 4.5 0 0 0 9 14 z" fill="currentColor"/>
+      <path d="M15 16 L11 22 L14 22 L12.5 26 L18 20 L15 20 Z" fill="currentColor" stroke="none"/>
+    </svg>`,
+
+  // Cloud with mixed precipitation: drop / dot / drop. Communicates
+  // "rain and snow falling together" without requiring a second icon
+  // size.
+  sleet: `
+    <svg viewBox="0 0 28 28" stroke="currentColor" fill="none" stroke-width="1.4" stroke-linecap="round">
+      <path d="M9 14 H21 a4 4 0 0 0 0.4 -7.96 A6 6 0 0 0 9.6 5.5 A4.5 4.5 0 0 0 9 14 z" fill="currentColor"/>
+      <line x1="10" y1="18" x2="9" y2="22"/>
+      <circle cx="14.5" cy="21" r="1" fill="currentColor" stroke="none"/>
       <line x1="20" y1="18" x2="19" y2="22"/>
     </svg>`,
 
