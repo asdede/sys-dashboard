@@ -1,38 +1,9 @@
 # sys-dashboard
 
-A minimal Tauri 2 + TypeScript scaffold for an always-on-top transparent
-desktop widget on Fedora 43. Three live circular gauges (CPU, RAM,
-NVIDIA GPU/VRAM) plus a 3-day weather forecast (currently a demo stub).
+## System monitor + weather widged
 
-The codebase is intentionally small and heavily commented: every
-non-trivial file walks you through the relevant Tauri 2 / `sysinfo` /
-NVML / Canvas 2D concept while you read it.
+![img](./img/all.png)
 
-## Layout
-
-```
-sys-dashboard/
-├── index.html             # vite entry; defines the widget DOM skeleton
-├── src/                   # frontend (vanilla TS)
-│   ├── main.ts            # bootstraps gauges, polls Rust at 1 Hz
-│   ├── api.ts             # typed wrappers around tauri's invoke()
-│   ├── gauge.ts           # animated Canvas 2D ring gauge
-│   ├── forecast.ts        # 3 day-cards with inline SVG icons
-│   └── style.css
-└── src-tauri/             # backend (rust)
-    ├── Cargo.toml
-    ├── tauri.conf.json    # window: transparent, borderless, on-top
-    ├── capabilities/      # Tauri 2 permission declarations
-    └── src/
-        ├── main.rs        # thin entry point
-        ├── lib.rs         # commands + AppState
-        ├── monitors/
-        │   ├── cpu_ram.rs # sysinfo - CPU% + RAM
-        │   └── gpu.rs     # nvml-wrapper - GPU util + VRAM
-        └── weather/
-            ├── mod.rs     # WeatherProvider trait + Forecast types
-            └── demo.rs    # hardcoded stand-in (TODO(you): replace)
-```
 
 ## Prerequisites (Fedora 43)
 
@@ -74,8 +45,6 @@ npm run tauri build    # produces .rpm + AppImage in
 
 ## How to extend
 
-Two seams are deliberately marked with `// TODO(you):`. Search the repo
-for that string and you'll land at the right place.
 
 ### 1. Plug in a real weather provider
 
@@ -104,47 +73,6 @@ replace it with your country's API:
 The trait keeps `forecast()` synchronous on purpose: Tauri commands run
 on a thread pool, so a blocking HTTP call inside is fine and skips a
 lot of async-runtime ceremony.
-
-### 2. Better icons / more weather conditions
-
-The inline-SVG map at the top of `src/forecast.ts` only covers
-`clear / cloudy / rain / snow`. You can:
-
-- Add new keys to the same `ICONS` record (e.g. `"fog"`,
-  `"thunderstorm"`), then have your provider emit those condition
-  strings; or
-- Replace the map with a loader for a richer set such as
-  [Meteocons](https://bas.dev/work/meteocons) (MIT licensed).
-
-## Notes on "desktop widget" on GNOME / Wayland
-
-Stock Fedora 43 runs GNOME on Wayland, which does **not** implement
-`wlr-layer-shell`. There is therefore no API for a window to be pinned
-*below* normal app windows. The closest behaviour Tauri can give you on
-GNOME is what's configured here: borderless, transparent, always-on-top,
-hidden from the taskbar.
-
-A second Wayland quirk worth knowing: clients are not allowed to
-**set** their own window position. Mutter decides where each window
-opens, so the `x` / `y` values saved in `widgets.json` will be ignored
-on the very first launch (every widget pops at Mutter's default spot)
-and any post-launch `set_position` call is a no-op too. The user has
-to drag the windows where they want them; that placement *does* save
-because Mutter still reports the new physical position via
-`WindowEvent::Moved`. If you find this annoying, run the app under
-XWayland and the positions become authoritative:
-
-```bash
-GDK_BACKEND=x11 npm run tauri dev
-```
-
-If you ever want a true desktop-anchored widget the alternatives are:
-
-- A **GNOME Shell extension** (different stack: GJS/JavaScript), or
-- Switching to a wlroots compositor (sway, Hyprland) where
-  layer-shell windows are first-class citizens.
-
-## Optional: autostart
 
 To launch the widget at login, drop a desktop entry into
 `~/.config/autostart/`:
