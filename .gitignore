@@ -1,0 +1,11 @@
+# node / vite
+node_modules
+dist
+.vite
+
+# editor
+.vscode
+.idea
+
+# os
+.DS_Store
