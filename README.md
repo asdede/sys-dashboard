@@ -8,6 +8,7 @@ Includes:
 - GPU usage and vram
 - Ram usage
 - CPU usage
+- Weather forecast widged
 
 ![img](./img/all.png)
 
