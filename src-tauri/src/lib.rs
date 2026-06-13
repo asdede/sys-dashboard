@@ -155,6 +155,12 @@ pub fn run() {
                 // `startResizeDragging`. On a frameless window the OS
                 // doesn't draw edge handles, so the grip is the only
                 // way the user can change the size.
+                // `always_on_bottom` pins each widget below normal app
+                // windows so opening Firefox / a terminal / an editor
+                // covers them like any other desktop background element.
+                // On Linux this maps to `_NET_WM_STATE_BELOW`, which
+                // GNOME Mutter honours via the X11 backend forced in
+                // main.rs (`GDK_BACKEND=x11`).
                 let win = WebviewWindowBuilder::new(app, spec.label, url)
                     .title(spec.label)
                     .inner_size(spec.width, spec.height)
@@ -163,7 +169,7 @@ pub fn run() {
                     .resizable(true)
                     .decorations(false)
                     .transparent(true)
-                    .always_on_top(true)
+                    .always_on_bottom(true)
                     .skip_taskbar(true)
                     .shadow(false)
                     .build()?;
